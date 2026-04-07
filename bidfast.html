@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BidFast • 24hr Facebook Bidding Post Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        :root { --tw-color-primary: #00d4ff; }
+        body { font-family: 'Inter', system_ui, sans-serif; }
+        .upload-zone {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .upload-zone.dragover {
+            background-color: #f0f9ff;
+            border-color: #00d4ff;
+            transform: scale(1.02);
+        }
+        .preview-img {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+    <div class="max-w-6xl mx-auto p-6">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-cyan-500 rounded-2xl flex items-center justify-center text-2xl">🚀</div>
+                <div>
+                    <h1 class="text-4xl font-semibold tracking-tight">BidFast</h1>
+                    <p class="text-slate-400 text-sm">24hr Facebook Bidding Post Builder</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div onclick="toggleApiPanel()" class="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-3xl px-5 py-2 text-sm font-medium cursor-pointer">
+                    <i class="fa-solid fa-key"></i>
+                    <span id="api-status" class="text-emerald-400">API Connected</span>
+                </div>
+                <button onclick="copyAllToClipboard()" 
+                        class="flex items-center gap-2 bg-white text-slate-900 hover:bg-cyan-400 hover:text-slate-900 font-semibold px-6 py-3 rounded-3xl transition-all active:scale-95">
+                    <i class="fa-solid fa-copy"></i>
+                    <span>COPY POST</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- LEFT COLUMN: INPUTS -->
+            <div class="space-y-8">
+                
+                <!-- Image Upload -->
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-slate-400">1. Upload your item photo</label>
+                    <div id="upload-zone" 
+                         onclick="document.getElementById('photo-upload').click()"
+                         class="upload-zone border-2 border-dashed border-slate-600 rounded-3xl h-80 flex flex-col items-center justify-center text-center cursor-pointer hover:border-cyan-400">
+                        <input type="file" id="photo-upload" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                        <i id="upload-icon" class="fa-solid fa-cloud-upload text-7xl text-slate-500 mb-4"></i>
+                        <p id="upload-text" class="text-slate-400 font-medium">Drag & drop or click to upload photo</p>
+                        <p class="text-xs text-slate-500 mt-2">AI will auto-detect the item</p>
+                    </div>
+                    
+                    <!-- Preview -->
+                    <div id="image-preview-container" class="hidden mt-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm font-medium text-slate-400">Photo Preview</span>
+                            <button onclick="removeImage()" class="text-red-400 hover:text-red-500 text-sm flex items-center gap-1">
+                                <i class="fa-solid fa-trash"></i> Remove
+                            </button>
+                        </div>
+                        <img id="image-preview" class="preview-img w-full max-h-96 object-contain bg-slate-900 rounded-3xl border border-slate-700 shadow-xl" alt="Item preview">
+                    </div>
+                </div>
+
+                <!-- AI Analysis Button -->
+                <button onclick="analyzeImageWithAI()" 
+                        id="ai-button"
+                        class="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-semibold py-5 rounded-3xl flex items-center justify-center gap-3 shadow-lg shadow-cyan-500/30 transition-all active:scale-95 disabled:opacity-50">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span id="ai-button-text">✨ Analyze Image with AI (GPT-4o Vision)</span>
+                </button>
+
+                <!-- Form Fields -->
+                <div class="bg-slate-900 rounded-3xl p-8 space-y-6">
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">ITEM TITLE</label>
+                            <input id="title-input" 
+                                   type="text" 
+                                   placeholder="Adult Bike - Like New"
+                                   class="w-full bg-slate-800 border border-slate-700 focus:border-cyan-400 rounded-2xl px-5 py-4 text-lg font-semibold outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">CONDITION</label>
+                            <select id="condition-select" class="w-full bg-slate-800 border border-slate-700 focus:border-cyan-400 rounded-2xl px-5 py-4 text-lg font-semibold outline-none">
+                                <option value="Like New">Like New</option>
+                                <option value="Excellent">Excellent</option>
+                                <option value="Very Good">Very Good</option>
+                                <option value="Good">Good</option>
+                                <option value="Fair">Fair</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">SHORT DESCRIPTION</label>
+                        <textarea id="description-input" rows="3"
+                                  class="w-full bg-slate-800 border border-slate-700 focus:border-cyan-400 rounded-3xl px-5 py-4 outline-none resize-none"></textarea>
+                    </div>
+
+                    <!-- Bidding Times -->
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">BIDDING START TIME</label>
+                            <input id="start-time" type="time" value="18:00" 
+                                   class="w-full bg-slate-800 border border-slate-700 focus:border-cyan-400 rounded-2xl px-5 py-4 text-lg font-semibold outline-none">
+                        </div>
+                        <div class="flex flex-col justify-end">
+                            <div class="text-xs text-slate-400">Today</div>
+                            <div id="today-date" class="font-semibold text-lg"></div>
+                        </div>
+                        <div class="flex flex-col justify-end">
+                            <div class="text-xs text-slate-400">Ends Tomorrow</div>
+                            <div id="tomorrow-date" class="font-semibold text-lg"></div>
+                        </div>
+                    </div>
+
+                    <!-- Fixed Info -->
+                    <div class="bg-slate-950 rounded-2xl p-5 text-sm border border-slate-700">
+                        <div class="flex items-center gap-2 text-cyan-400 mb-2">
+                            <i class="fa-solid fa-location-dot"></i>
+                            <span class="font-medium">Meet @ Burger King by Lowes</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-cyan-400">
+                            <i class="fa-solid fa-credit-card"></i>
+                            <span class="font-medium">Accepted Payments: Cash, Cash App, Venmo</span>
+                        </div>
+                    </div>
+
+                    <!-- Vibe Selector -->
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-3">CHOOSE POST VIBE</label>
+                        <div class="flex gap-3">
+                            <button onclick="setVibe('Minimalist')" 
+                                    id="vibe-minimalist"
+                                    class="flex-1 vibe-btn flex items-center justify-center gap-2 py-4 rounded-3xl border-2 border-slate-700 hover:border-slate-400 font-medium">
+                                <i class="fa-solid fa-minus"></i> MINIMALIST
+                            </button>
+                            <button onclick="setVibe('Normal')" 
+                                    id="vibe-normal"
+                                    class="flex-1 vibe-btn flex items-center justify-center gap-2 py-4 rounded-3xl border-2 border-cyan-400 bg-cyan-400/10 text-cyan-400 font-medium">
+                                <i class="fa-solid fa-circle"></i> NORMAL
+                            </button>
+                            <button onclick="setVibe('Hype')" 
+                                    id="vibe-hype"
+                                    class="flex-1 vibe-btn flex items-center justify-center gap-2 py-4 rounded-3xl border-2 border-slate-700 hover:border-slate-400 font-medium">
+                                🔥 HYPE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: LIVE PREVIEW -->
+            <div>
+                <div class="sticky top-8">
+                    <label class="block text-sm font-medium mb-3 text-slate-400">2. Live Facebook Post Preview</label>
+                    <div id="post-preview" 
+                         class="bg-white text-slate-900 rounded-3xl shadow-2xl p-6 min-h-[520px] flex flex-col">
+                        
+                        <div class="flex-1">
+                            <div id="preview-title" class="text-3xl font-bold mb-3">Adult Bike - Like New</div>
+                            
+                            <div id="preview-description" class="text-slate-700 leading-relaxed text-lg mb-6">
+                                Short description appears here...
+                            </div>
+
+                            <div class="space-y-4 border-t border-b border-slate-200 py-5 my-5">
+                                <div class="flex items-baseline gap-3">
+                                    <span class="text-emerald-600 font-semibold">Bidding Begins @</span>
+                                    <span id="preview-start-time" class="text-2xl font-bold">6:00 PM</span>
+                                    <span id="preview-today" class="text-slate-500">on 4/7/2026</span>
+                                </div>
+                                <div class="flex items-baseline gap-3">
+                                    <span class="text-red-600 font-semibold">Bidding Ends @</span>
+                                    <span id="preview-end-time" class="text-2xl font-bold">6:00 PM</span>
+                                    <span id="preview-tomorrow" class="text-slate-500">on 4/8/2026</span>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2 text-sm text-slate-600 mb-2">
+                                <i class="fa-solid fa-location-dot"></i>
+                                Meet @ Burger King by Lowes
+                            </div>
+                            <div class="flex items-center gap-2 text-sm text-slate-600">
+                                <i class="fa-solid fa-credit-card"></i>
+                                Accepted Payments: Cash, Cash App, Venmo
+                            </div>
+                            
+                            <div class="mt-auto pt-8 text-[10px] text-slate-400 border-t flex justify-between">
+                                <span>24hr Bidding Group • Damon’s Resale</span>
+                                <span id="preview-vibe-badge" class="px-3 py-1 rounded-full bg-cyan-100 text-cyan-700 font-medium">Normal Vibe</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Improvement Suggestions -->
+                    <div class="mt-8 bg-slate-900 rounded-3xl p-6 text-sm">
+                        <h3 class="font-medium mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-lightbulb"></i> Quick Improvement Tips
+                        </h3>
+                        <div id="suggestions-list" class="space-y-3 text-slate-400 text-sm">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Panel -->
+    <div id="api-panel" onclick="if(event.target===this)toggleApiPanel()" 
+         class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+        <div onclick="event.stopImmediatePropagation()" 
+             class="bg-slate-900 rounded-3xl max-w-md w-full mx-4 p-8">
+            <h2 class="text-2xl font-semibold mb-2">OpenAI API Settings</h2>
+            <p class="text-slate-400 text-sm mb-6">Your key is stored only in your browser. Never shared.</p>
+            
+            <div class="mb-6">
+                <label class="block text-xs uppercase tracking-widest mb-1">OpenAI API Key</label>
+                <input id="api-key-input" type="password" placeholder="sk-..." 
+                       class="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-4 font-mono text-sm">
+            </div>
+
+            <div class="flex items-center justify-between">
+                <button onclick="saveApiKey()" 
+                        class="bg-cyan-500 hover:bg-cyan-400 text-white font-medium px-8 py-4 rounded-3xl flex items-center gap-2">
+                    <i class="fa-solid fa-save"></i> Save Key
+                </button>
+                <button onclick="clearApiKey()" 
+                        class="text-red-400 hover:text-red-500 flex items-center gap-2 text-sm font-medium">
+                    <i class="fa-solid fa-trash"></i> Clear Key
+                </button>
+                <button onclick="toggleApiPanel()" class="text-slate-400 hover:text-white">Close</button>
+            </div>
+
+            <p class="text-xs text-slate-500 mt-8">Alternative: Want to use Grok instead? Just reply here and I’ll give you the Grok API version.</p>
+        </div>
+    </div>
+
+    <script>
+        // Tailwind script init
+        function initTailwind() {
+            tailwind.config = {
+                content: [],
+                theme: {
+                    extend: {}
+                }
+            }
+        }
+
+        // Global variables
+        let currentImageBase64 = null;
+        let currentVibe = "Normal";
+        let apiKey = localStorage.getItem("openai_api_key") || "";
+
+        // Update dates automatically
+        function updateDates() {
+            const today = new Date();
+            const tomorrow = new Date();
+            tomorrow.setDate(today.getDate() + 1);
+            
+            const dateOptions = { month: 'numeric', day: 'numeric', year: 'numeric' };
+            
+            document.getElementById("today-date").textContent = today.toLocaleDateString('en-US', dateOptions);
+            document.getElementById("tomorrow-date").textContent = tomorrow.toLocaleDateString('en-US', dateOptions);
+            
+            // Preview
+            document.getElementById("preview-today").textContent = `on ${today.toLocaleDateString('en-US', dateOptions)}`;
+            document.getElementById("preview-tomorrow").textContent = `on ${tomorrow.toLocaleDateString('en-US', dateOptions)}`;
+        }
+
+        // Convert 24hr time to 12hr with AM/PM
+        function formatTimeTo12hr(time24) {
+            if (!time24) return "6:00 PM";
+            const [hours24, minutes] = time24.split(':').map(Number);
+            const period = hours24 >= 12 ? 'PM' : 'AM';
+            const hours12 = hours24 % 12 || 12;
+            return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+        }
+
+        // Live preview updater
+        function updateLivePreview() {
+            const title = document.getElementById("title-input").value || "Item Name - Condition";
+            const description = document.getElementById("description-input").value || "Short description...";
+            const startTime24 = document.getElementById("start-time").value;
+            const startTime12 = formatTimeTo12hr(startTime24);
+            
+            // Update preview
+            document.getElementById("preview-title").innerHTML = `<span class="text-3xl">${title}</span>`;
+            document.getElementById("preview-description").innerHTML = description.replace(/\n/g, '<br>');
+            document.getElementById("preview-start-time").textContent = startTime12;
+            document.getElementById("preview-end-time").textContent = startTime12;
+            document.getElementById("preview-vibe-badge").innerHTML = `${currentVibe} <span class="text-xs">vibe</span>`;
+            
+            // Update suggestions based on vibe
+            renderSuggestions();
+        }
+
+        // Render vibe-based suggestions
+        function renderSuggestions() {
+            const container = document.getElementById("suggestions-list");
+            let suggestionsHTML = `
+                <div class="flex gap-2 text-xs">
+                    <span class="bg-slate-800 px-3 py-1 rounded-3xl">Add 1-2 relevant emojis</span>
+                    <span class="bg-slate-800 px-3 py-1 rounded-3xl">Tag your post with #24hrBid</span>
+                </div>`;
+            
+            if (currentVibe === "Hype") {
+                suggestionsHTML += `<div class="text-amber-400 text-xs mt-3">🔥 Great! Hype posts get 3× more bids in this group.</div>`;
+            } else if (currentVibe === "Minimalist") {
+                suggestionsHTML += `<div class="text-slate-400 text-xs mt-3">Clean & professional — perfect for higher-end items.</div>`;
+            }
+            
+            container.innerHTML = suggestionsHTML;
+        }
+
+        // Handle image upload
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                currentImageBase64 = ev.target.result;
+                document.getElementById("image-preview").src = currentImageBase64;
+                document.getElementById("image-preview-container").classList.remove("hidden");
+                document.getElementById("upload-zone").classList.add("hidden");
+                
+                // Auto-enable AI button
+                document.getElementById("ai-button").disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeImage() {
+            currentImageBase64 = null;
+            document.getElementById("image-preview-container").classList.add("hidden");
+            document.getElementById("upload-zone").classList.remove("hidden");
+            document.getElementById("ai-button").disabled = true;
+        }
+
+        // Save & load API key
+        function saveApiKey() {
+            apiKey = document.getElementById("api-key-input").value.trim();
+            if (apiKey) {
+                localStorage.setItem("openai_api_key", apiKey);
+                document.getElementById("api-status").innerHTML = `✅ Connected <span class="text-xs">(${apiKey.slice(0,8)}...)</span>`;
+                toggleApiPanel();
+            }
+        }
+
+        function clearApiKey() {
+            localStorage.removeItem("openai_api_key");
+            apiKey = "";
+            document.getElementById("api-status").innerHTML = `<span class="text-amber-400">No key saved</span>`;
+        }
+
+        function toggleApiPanel() {
+            const panel = document.getElementById("api-panel");
+            panel.classList.toggle("hidden");
+            if (!panel.classList.contains("hidden") && apiKey) {
+                document.getElementById("api-key-input").value = apiKey;
+            }
+        }
+
+        // Main AI call using GPT-4o Vision
+        async function analyzeImageWithAI() {
+            if (!currentImageBase64) {
+                alert("Please upload an image first!");
+                return;
+            }
+            if (!apiKey) {
+                alert("Please enter your OpenAI API key first (click the key icon).");
+                toggleApiPanel();
+                return;
+            }
+
+            const button = document.getElementById("ai-button");
+            const originalText = button.innerHTML;
+            button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Analyzing with GPT-4o Vision...`;
+            button.disabled = true;
+
+            try {
+                const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-4o",
+                        messages: [
+                            {
+                                role: "system",
+                                content: "You are an expert Facebook Marketplace reseller. Analyze the product photo and return ONLY valid JSON with these exact keys: title, condition, description. Title must be in the format 'Item Name - Condition'. Description must be 2-4 short sentences, engaging for a 24-hour bidding group. Condition must be one of: Like New, Excellent, Very Good, Good, Fair."
+                            },
+                            {
+                                role: "user",
+                                content: [
+                                    { type: "text", text: "Analyze this resale item photo for a 24hr bidding Facebook post." },
+                                    { type: "image_url", image_url: { url: currentImageBase64 } }
+                                ]
+                            }
+                        ],
+                        max_tokens: 300,
+                        temperature: 0.7
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.choices && data.choices[0].message.content) {
+                    const jsonText = data.choices[0].message.content.trim();
+                    let parsed;
+                    try {
+                        parsed = JSON.parse(jsonText);
+                    } catch(e) {
+                        // Sometimes GPT returns markdown, try to extract JSON
+                        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+                        parsed = JSON.parse(jsonMatch ? jsonMatch[0] : jsonText);
+                    }
+
+                    // Populate fields
+                    document.getElementById("title-input").value = parsed.title || "Item - Condition";
+                    document.getElementById("condition-select").value = parsed.condition || "Like New";
+                    document.getElementById("description-input").value = parsed.description || "Great item ready for its new home!";
+
+                    updateLivePreview();
+                    setVibe("Normal"); // Reset to normal vibe after AI
+                }
+            } catch (err) {
+                console.error(err);
+                alert("AI analysis failed. Make sure your API key is correct and has credits.");
+            } finally {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        }
+
+        // Vibe system
+        function setVibe(vibe) {
+            currentVibe = vibe;
+            
+            // Update active button styles
+            document.querySelectorAll(".vibe-btn").forEach(btn => {
+                if (btn.id === `vibe-${vibe.toLowerCase()}`) {
+                    btn.classList.add("border-cyan-400", "bg-cyan-400/10", "text-cyan-400");
+                    btn.classList.remove("border-slate-700");
+                } else {
+                    btn.classList.remove("border-cyan-400", "bg-cyan-400/10", "text-cyan-400");
+                    btn.classList.add("border-slate-700");
+                }
+            });
+
+            // Modify description based on vibe
+            let desc = document.getElementById("description-input").value;
+            if (!desc) return;
+
+            let newDesc = desc;
+
+            if (vibe === "Minimalist") {
+                newDesc = newDesc.replace(/!+/g, "").replace(/🔥|🚀|💨|✨/g, "");
+                newDesc = newDesc.split(". ").slice(0, 2).join(". ") + ".";
+            } 
+            else if (vibe === "Hype") {
+                newDesc = newDesc + " 🔥 Must see! Bidding starts now — don’t miss out! 🚀";
+            }
+            // Normal = leave as-is
+
+            document.getElementById("description-input").value = newDesc;
+            updateLivePreview();
+        }
+
+        // Copy entire post to clipboard
+        function copyAllToClipboard() {
+            const title = document.getElementById("title-input").value;
+            const desc = document.getElementById("description-input").value;
+            const startTime12 = formatTimeTo12hr(document.getElementById("start-time").value);
+            const todayStr = document.getElementById("today-date").textContent;
+            const tomorrowStr = document.getElementById("tomorrow-date").textContent;
+
+            const fullPost = `${title}\n\n${desc}\n\nBidding Begins @ ${startTime12} on ${todayStr}\nBidding Ends @ ${startTime12} on ${tomorrowStr}\n\nMeet @ Burger King by Lowes\nAccepted Payments : Cash, Cash App, Venmo\n-`;
+
+            navigator.clipboard.writeText(fullPost).then(() => {
+                const btns = document.querySelectorAll("button");
+                const original = Array.from(btns).find(b => b.textContent.includes("COPY POST"));
+                if (original) {
+                    const origHTML = original.innerHTML;
+                    original.innerHTML = `✅ COPIED! Ready to paste in Facebook`;
+                    setTimeout(() => { original.innerHTML = origHTML; }, 2200);
+                }
+            });
+        }
+
+        // Initialize everything
+        function initializeApp() {
+            initTailwind();
+            updateDates();
+            
+            // Live preview listeners
+            const inputs = ["title-input", "description-input", "start-time", "condition-select"];
+            inputs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener("input", updateLivePreview);
+            });
+
+            // Initial preview
+            updateLivePreview();
+
+            // Show API status
+            if (apiKey) {
+                document.getElementById("api-status").innerHTML = `✅ Connected <span class="text-xs">(${apiKey.slice(0,8)}...)</span>`;
+            } else {
+                document.getElementById("api-status").innerHTML = `<span class="text-amber-400">Add API key to enable AI</span>`;
+            }
+
+            console.log("%c✅ BidFast web app ready for Damon! 🚀", "color:#00d4ff; font-size:13px; font-weight:600");
+        }
+
+        // Start the app
+        window.onload = initializeApp;
+    </script>
+</body>
+</html>
